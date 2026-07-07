@@ -48,7 +48,7 @@ connection, and reaches the local service running on the laptop.
 ## Install
 
 ```sh
-go install github.com/marcoandredinis/ttunnel@latest
+go install github.com/marcoandredinis/ttunnel@v1.0.1
 ```
 
 ## Usage
