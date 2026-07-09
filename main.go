@@ -35,7 +35,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, `ttunnel - reverse TCP tunnel
 Usage:
   ttunnel server
-  TTUNNEL_TOKEN=<token> ttunnel agent --server <server-ip>:8001 [--target <exposed-port>]`)
+  TTUNNEL_TOKEN=<token> ttunnel agent -server <server-ip>:8001 [--target <exposed-port|443>]`)
 }
 
 func runServer() {
