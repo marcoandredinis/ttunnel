@@ -86,7 +86,8 @@ func generateToken() (string, error) {
 }
 
 func serveAgents(ctx context.Context, ln net.Listener, token string) error {
-	slog.Info("server listening", "addr", ln.Addr().String(), "token", token)
+	fmt.Fprintf(os.Stdout, "TOKEN %s\n", token)
+	slog.Info("server listening", "addr", ln.Addr().String())
 	go func() {
 		<-ctx.Done()
 		ln.Close()
