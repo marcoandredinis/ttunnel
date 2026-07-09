@@ -3,29 +3,29 @@
 
 version: 2
 
-before:
-  hooks:
-    - go mod tidy
-
 builds:
-  - main: ./...
+  - id: linux
+    main: ./...
     env:
       - CGO_ENABLED=0
     goos:
       - linux
-      - darwin
     goarch:
       - amd64
+  - id: macOS
+    main: ./...
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
       - arm64
 
 archives:
-  - formats: [tar.gz]
+  - formats: [binary]
+    files: []
     name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
+      {{ .Binary }}_{{ .Os }}_{{ .Arch }}
 
 changelog:
   sort: asc
