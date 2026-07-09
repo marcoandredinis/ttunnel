@@ -86,7 +86,7 @@ func generateToken() (string, error) {
 }
 
 func serveAgents(ctx context.Context, ln net.Listener, token string) error {
-	fmt.Fprintf(os.Stdout, "TOKEN %s\n", token)
+	fmt.Fprintf(os.Stdout, "TTUNNEL_TOKEN=%s\n", token)
 	slog.Info("server listening", "addr", ln.Addr().String())
 	go func() {
 		<-ctx.Done()
