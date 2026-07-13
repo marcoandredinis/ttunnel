@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
+	_ "embed"
 	"encoding/base64"
 	"errors"
 	"flag"
@@ -20,29 +21,26 @@ import (
 	"github.com/hashicorp/yamux"
 )
 
+//go:embed README.md
+var readme string
+
+func showUsage() {
+	fmt.Print(readme)
+	os.Exit(2)
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "server" {
 		runServer()
-	} else if len(os.Args) > 1 && os.Args[1] == "agent" {
+	} else if len(os.Args) > 2 && os.Args[1] == "agent" {
 		runAgent(os.Args[2:])
 	} else {
-		usage()
-		os.Exit(2)
+		showUsage()
 	}
-}
-
-func usage() {
-	fmt.Fprintln(os.Stderr, `ttunnel - reverse TCP tunnel
-Usage:
-  ttunnel server
-  TTUNNEL_TOKEN=<token> ttunnel agent -server <server-ip>:8001 [--target <exposed-port|443>]`)
 }
 
 func runServer() {
-	token, err := generateToken()
-	if err != nil {
-		fatal(err)
-	}
+	token := generateToken()
 	ln, err := net.Listen("tcp", ":8001")
 	if err != nil {
 		fatal(fmt.Errorf("listen: %w", err))
@@ -56,18 +54,21 @@ func runServer() {
 
 func runAgent(args []string) {
 	fs := flag.NewFlagSet("agent", flag.ExitOnError)
-	serverAddr := fs.String("server", "", "server address, e.g. host:8001")
-	target := fs.String("target", "443", "local and exposed port, e.g. 443")
-	fs.Parse(args)
-
+	fs.Usage = showUsage
+	target := fs.String("target", "443", "local and exposed port")
+	fs.Parse(args[1:])
+	if fs.NArg() != 0 {
+		showUsage()
+	}
 	token := os.Getenv("TTUNNEL_TOKEN")
-	if *serverAddr == "" || token == "" || *target == "" {
-		fatal(fmt.Errorf("agent: TTUNNEL_TOKEN and --server are required"))
+	if *target == "" || token == "" {
+		showUsage()
 	}
 
+	serverAddr := net.JoinHostPort(args[0], "8001")
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := agentLoop(ctx, *serverAddr, token, *target); err != nil {
+	if err := agentLoop(ctx, serverAddr, token, *target); err != nil {
 		fatal(err)
 	}
 }
@@ -77,21 +78,19 @@ func fatal(err error) {
 	os.Exit(1)
 }
 
-func generateToken() (string, error) {
+func generateToken() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		return "", err
+		panic(fmt.Errorf("generate token: %w", err))
 	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
+	return base64.RawURLEncoding.EncodeToString(b)
 }
 
 func serveAgents(ctx context.Context, ln net.Listener, token string) error {
 	fmt.Fprintf(os.Stdout, "TTUNNEL_TOKEN=%s\n", token)
 	slog.Info("server listening", "addr", ln.Addr().String())
-	go func() {
-		<-ctx.Done()
-		ln.Close()
-	}()
+	stop := context.AfterFunc(ctx, func() { _ = ln.Close() })
+	defer stop()
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -107,15 +106,8 @@ func serveAgents(ctx context.Context, ln net.Listener, token string) error {
 
 func handleAgent(ctx context.Context, log *slog.Logger, conn net.Conn, token string) {
 	defer conn.Close()
-	done := make(chan struct{})
-	go func() {
-		select {
-		case <-ctx.Done():
-			conn.Close()
-		case <-done:
-		}
-	}()
-	defer close(done)
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
 
 	line, err := readLine(conn)
 	if err != nil {
@@ -150,13 +142,11 @@ func handleAgent(ctx context.Context, log *slog.Logger, conn net.Conn, token str
 		return
 	}
 	defer session.Close()
+	stopSession := context.AfterFunc(ctx, func() { _ = session.Close() })
+	defer stopSession()
 	go func() {
-		select {
-		case <-ctx.Done():
-			session.Close()
-		case <-session.CloseChan():
-		}
-		public.Close()
+		<-session.CloseChan()
+		_ = public.Close()
 	}()
 	log.Info("agent connected", "listen", port)
 
@@ -203,10 +193,8 @@ func agentLoop(ctx context.Context, serverAddr, token string, port string) error
 		return fmt.Errorf("yamux client: %w", err)
 	}
 	defer session.Close()
-	go func() {
-		<-ctx.Done()
-		session.Close()
-	}()
+	stop := context.AfterFunc(ctx, func() { _ = session.Close() })
+	defer stop()
 	slog.Info("tunnel established", "port", port)
 
 	for {
@@ -230,20 +218,17 @@ func agentLoop(ctx context.Context, serverAddr, token string, port string) error
 }
 
 func readLine(r io.Reader) (string, error) {
-	const maxMessageLen = 512
-	var b []byte
+	const maxMessageLen = 128
+	b := make([]byte, 0, maxMessageLen)
 	var one [1]byte
 	for len(b) < maxMessageLen {
-		n, err := r.Read(one[:])
-		if n == 1 {
-			if one[0] == '\n' {
-				return string(b), nil
-			}
-			b = append(b, one[0])
-		}
-		if err != nil {
+		if _, err := io.ReadFull(r, one[:]); err != nil {
 			return "", err
 		}
+		if one[0] == '\n' {
+			return string(b), nil
+		}
+		b = append(b, one[0])
 	}
 	return "", fmt.Errorf("message too large: %d bytes", maxMessageLen)
 }
