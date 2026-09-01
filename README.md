@@ -57,7 +57,7 @@ listener when the agent session ends.
 ## Install
 
 ```sh
-go install github.com/marcoandredinis/ttunnel@v1.0.7
+go install github.com/marcoandredinis/ttunnel@v1.0.8
 ```
 
 ## Security
