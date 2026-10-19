@@ -57,7 +57,7 @@ listener when the agent session ends.
 ## Install
 
 ```sh
-go install github.com/marcoandredinis/ttunnel@v1.0.8
+go install github.com/marcoandredinis/ttunnel@v1.0.9
 ```
 
 ## Security
@@ -70,3 +70,11 @@ or integrity protection. Do not expose it directly to the public Internet.
 
 This project is considered finished software. It will only be updated when a
 critical bug is discovered.
+
+## Release
+
+- Add development commits and push
+- Add release commit `git commit -m 'version 1.0.9'`
+- Create tag `git tag -a v1.0.9 -m "v1.0.9"`
+- Push tag `git push origin v1.0.9`
+- See the release process in https://github.com/marcoandredinis/ttunnel/actions/workflows/release.yml and https://github.com/marcoandredinis/ttunnel/releases
