@@ -57,7 +57,7 @@ listener when the agent session ends.
 ## Install
 
 ```sh
-go install github.com/marcoandredinis/ttunnel@v1.0.9
+go install github.com/marcoandredinis/ttunnel@vv1.0.10
 ```
 
 ## Security
@@ -74,7 +74,7 @@ critical bug is discovered.
 ## Release
 
 - Add development commits and push
-- Add release commit `git commit -m 'version 1.0.9'`
-- Create tag `git tag -a v1.0.9 -m "v1.0.9"`
-- Push tag `git push origin v1.0.9`
+- Add release commit `git commit -m 'version v1.0.10'`
+- Create tag `git tag -a v1.0.10 -m "v1.0.10"`
+- Push tag `git push origin v1.0.10`
 - See the release process in https://github.com/marcoandredinis/ttunnel/actions/workflows/release.yml and https://github.com/marcoandredinis/ttunnel/releases
